@@ -1,0 +1,19 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "end-harness"
+version = "0.2.0"
+description = "Observable offline runtime around an explicit local END Engine"
+requires-python = ">=3.11"
+dependencies = []
+
+[project.scripts]
+end-harness = "end_harness.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["end_harness*"]
+
+[tool.setuptools.package-data]
+end_harness = ["fixtures/*.json"]
