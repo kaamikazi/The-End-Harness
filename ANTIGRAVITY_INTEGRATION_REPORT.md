@@ -1,22 +1,58 @@
 # Antigravity (Gemini) provider — integration report
 
-> Publication note: personal usernames in local executable/path examples are generalized as `<user>`. Recorded outcomes and limitations are unchanged. Referenced generated evidence stays local and is excluded from this repository.
+> Publication note: personal usernames in local executable/path examples are generalized as `<user>`. Raw experiment/smoke journals, model responses, receipts, and validation logs are local-only evidence, excluded by `.gitignore` and not included in this public repository.
 
-Date: 2026-09-29. This version adds the diagnosis of the first live smoke and supersedes the earlier versions of this file. Sections below "Current status" are kept as the history of earlier passes.
+Documentation review: **2026-10-11**. This review read existing evidence and ran the offline compatibility check documented in [COMPATIBILITY.md](COMPATIBILITY.md). It made no live model calls, live smoke runs, live benchmarks, runtime changes, or Engine-policy changes.
 
-## Current status
+## Current status — verified historical runs, reviewed 2026-10-11
 
-- **One live smoke has been run**, launched by you after credit overages were confirmed OFF: `output/antigravity-smoke/71532008-8e55-49f4-af8f-3a1086ae9f47`.
-  - All 17 provider invocations completed with valid structured output: 3 probes and 14 inside END.
-  - END stopped with `EXTERNAL_BLOCKER` / `BLOCKED`; the Harness cause was `model_attempts_exhausted`, with C0 as best.
-  - The post-run reference checks PASSed.
-- **Offline diagnosis:** [output/diagnosis-71532008/DIAGNOSIS.md](output/diagnosis-71532008/DIAGNOSIS.md), with the Engine handoff in [ENGINE_HANDOFF.md](output/diagnosis-71532008/ENGINE_HANDOFF.md).
-  - **Root cause:** the Engine's mandatory revision cycle, an unresolvable evidence-gap weakness, and two Engine audit policies. No Harness transport, feedback, accounting or deadline defect was found.
-  - **Harness changes:** a journaled dispatch-budget/timing record, and stderr progress output.
-- **Not claimed:** this establishes integration viability only. It says nothing about performance, and benchmark use stays blocked (`benchmark_eligible=false`).
-- Every Antigravity test uses the **SYNTHETIC** stand-in [`tests/synthetic_agy.py`](tests/synthetic_agy.py). Harness **149/149 OK**, including 37 Antigravity tests, against END Engine **0.3.2** (135/135 OK). Engine 0.3.1 fixed the audit-severity inflation diagnosed in smoke 71532008, and 0.3.2 reconciles the final assessment of a restored candidate; see `E:\The End Engine\IMPLEMENTATION_REPORT.md`. The smoke has not been repeated.
+Two live smoke records are verified below. The Engine version and source fingerprint in each row come from that run's generation-time manifest, not today's checkout.
 
-## Credit-setting correction (latest pass)
+| Recorded run | First smoke — 2026-09-29 | Successful repeat — 2026-09-30 |
+|---|---|---|
+| Smoke ID | `71532008-8e55-49f4-af8f-3a1086ae9f47` | `8b553c71-30d1-41b5-9aa4-9ca917ac6a3b` |
+| Recorded Engine | **0.3.0** | **0.3.2** |
+| Provider invocations | **17 = 3 probes + 14 END** | **16 = 3 probes + 13 END** |
+| Probe outcomes | All three compatible | All three compatible |
+| Engine termination / final gate | `EXTERNAL_BLOCKER` / `BLOCKED` | `ACCEPTED_PROVISIONALLY` / `ACCEPT_PROVISIONALLY` |
+| Harness stop cause | `model_attempts_exhausted` | None |
+| Returned / latest candidate | C0 / C1 | C0 / C1 |
+| Development checks | C0 and C1: `scheduling.development` PASS; 2 executions | C0 and C1: `scheduling.development` PASS; 2 executions |
+| Post-run reference checks | Initial and final: `scheduling.final` PASS | Initial and final: `scheduling.final` PASS |
+| Journal closure | Smoke, END, and both evaluation journals complete | Smoke, END, and both evaluation journals complete |
+| Benchmark eligibility | `false` | `false` |
+
+Both manifests identify origin `LIVE_ANTIGRAVITY_SUBSCRIPTION`, requested model `gemini-3.8-flash-high`, and recorded CLI version 1.2.13. These are historical records; CLI/account readiness was not rechecked during this documentation task. The serving model and underlying Gemini request counts remain unobservable. The historical Harness field names `requests`, `model/call`, and `model_attempts_exhausted` count provider invocations for this backend, not underlying Gemini requests.
+
+Recorded Engine fingerprints:
+
+- First smoke: `11895bb98ac917622ac726dcced72f7e433ff10d503ba34e08a0c15ff835b4b9` (0.3.0).
+- Repeat: `5ea97d2f7170a8d4d928d9e088b6d3d0f6d3425cdea5f28628ac545c8db5c314` (0.3.2).
+
+**What the repeat establishes.** The bounded provider integration completed a real END run with native provisional acceptance, no Harness stop cause, passing candidate-bound development checks, and passing post-run reference checks. The saved runtime result records `engine_execution=returned`, `trajectory_snapshot=confirmed`, `trajectory_import=confirmed`, `journal_closure=confirmed`, and no failures. Read-only journal inspection found no unfinished calls or truncated records in the smoke, END, or initial/final evaluator journals.
+
+**What it does not establish.** These are two individual development-task runs, not a controlled comparison. Their schedules and model critiques differed. The repeat raised no weaknesses, and its final reconciliation exercised the no-op path; it does not demonstrate that the intervening Engine changes caused the different termination. In each run C1 was byte-identical to the already-correct C0; C0 remained selected, no rollback occurred, and there was no incorrect-to-correct improvement. No task-performance benefit of END or Gemini was demonstrated, and no held-out task was run. `benchmark_eligible=false` remains unchanged.
+
+## Local-only supporting evidence
+
+The following paths are relative to the local Harness directory. They are references to excluded files, not public download links; the repository does not distribute the raw evidence.
+
+- First smoke: `output/antigravity-smoke/71532008-8e55-49f4-af8f-3a1086ae9f47/` — generation manifest, smoke result, END result, journals, candidate artifacts, and receipts.
+- First-smoke diagnosis: `output/diagnosis-71532008/DIAGNOSIS.md` and `output/diagnosis-71532008/ENGINE_HANDOFF.md` (local only).
+- Repeat: **`output/antigravity-smoke-v032/8b553c71-30d1-41b5-9aa4-9ca917ac6a3b/`** — the available repeat evidence is in `antigravity-smoke-v032`, not the first run's directory.
+- Repeat closeout: `output/closeout-8b553c71/CLOSEOUT.md` (2026-09-30, local only).
+
+This publication review independently checked both manifests/results, the development/reference receipts and their task/artifact bindings, and all four journals for each smoke. The closeout's reported repeat outcome agrees with those records. Evidence verification output for this review is local only: `output/publication-validation-20261011/verified-evidence.json`.
+
+## Current offline compatibility
+
+[COMPATIBILITY.md](COMPATIBILITY.md) records only checks performed on 2026-10-11. The selected checkout is **Engine 0.3.5.2**, fingerprint `29c0bbce13559ea595d34d9c78d4812811bcade144deb6fdbd8a231c4da4fc82`; the unchanged supported host test run **failed: 149 tests, 7 failures, 9 errors**. No compatibility pass is claimed. The 0.3.2/149-Harness/135-Engine values reported in September are historical and do not identify the current checkout or a new Engine test result. No live readiness, authentication, quota, model availability, or credit setting was reassessed here.
+
+## Historical integration notes — 2026-09-29
+
+The sections below retain the earlier configuration, documentation, audit, and test history. Their readiness blockers, settings states, test counts, and source fingerprints describe those dated passes only. Later live activity is summarized above; old preparation instructions must not be read as today's blocker or as authorization to dispatch a new smoke. Historical documentation quotations were not refreshed in this publication task.
+
+## Historical credit-setting correction — 2026-09-29
 
 **What the official documentation establishes**
 
@@ -54,7 +90,7 @@ Date: 2026-09-29. This version adds the diagnosis of the first live smoke and su
 
 The check runs before any CLI process, again after the metadata commands, and before every prompt dispatch; a failure raises `configuration_not_established` and no process starts. The file is never rewritten before requests, and there is no unconditional bypass. When the check passes, the `credit_overage` control reads `configured_unverified`, because credit consumption itself is unobservable. `benchmark_eligible` stays `false`, and all tool, browsing, subagent, plugin, fallback and hidden-request disclosures are unchanged.
 
-**Readiness now** (`output/validation-antigravity/antigravity-check-credit-fix.json`, metadata only)
+**Historical metadata-only readiness snapshot — 2026-09-29 (before the live smokes)** (`output/validation-antigravity/antigravity-check-credit-fix.json`, metadata only)
 
 | Item | Result |
 |---|---|
@@ -64,13 +100,13 @@ The check runs before any CLI process, again after the metadata commands, and be
 | Capabilities | READY: version 1.2.13, all flags present, `gemini-3.8-flash-high` listed |
 | Invocations | 0 provider invocations; all job processes exited |
 
-**Remaining concrete blocker and the one manual action.** Find the "AI Credit Overages" user setting, confirm it reads **Never**, and set it to **Never** if it doesn't. The docs do not state where this setting lives. Two places are plausible but **unconfirmed**:
+**Historical blocker and proposed action from that snapshot (not current readiness).** Find the "AI Credit Overages" user setting, confirm it reads **Never**, and set it to **Never** if it doesn't. The docs do not state where this setting lives. Two places are plausible but **unconfirmed**:
 - the CLI's own `/config` (alias `/settings`) panel, which is the documented CLI settings surface;
 - the settings page of the Antigravity app, where the Plans page says quota usage can be viewed.
 
 If the setting is not visible on any surface, the effective behaviour cannot be established and the smoke stays blocked. The missing evidence would then be a documented or visible location and value for that setting. Passing `--account-credit-overages never` records your confirmation only; the Harness cannot verify it.
 
-## Configuration pass (previous pass)
+## Historical configuration pass — 2026-09-29 (before the credit-setting correction)
 
 **Config path used:** `C:\Users\<user>\.gemini\antigravity-cli\settings.json`. This is `%USERPROFILE%\.gemini\antigravity-cli\settings.json`, resolved by `default_settings_path()` from `Path.home()`, which follows `%USERPROFILE%` on Windows. The path is covered by an offline test.
 
@@ -96,7 +132,7 @@ If the setting is not visible on any surface, the effective behaviour cannot be 
 - **Reproduced.** I re-applied the key (backup `settings.json.bak.1`) and ran the fixed check. `--version` and `--help` left the key intact; `agy models` removed it again (`explicit_false -> absent`).
 - **Final state of your files.** `settings.json` equals the original bytes, and both `settings.json.bak` and `settings.json.bak.1` are identical to the original. The net change is the two backup files. No credential, token or unrelated setting was read out, altered or printed.
 
-**Harness defects found and fixed.** The policy itself is unchanged: explicit `false` is still required, and a missing key is never treated as false.
+**Historical strict-policy implementation.** At this intermediate configuration pass, explicit `false` was required and an absent key blocked. The later 2026-09-29 credit-setting correction above superseded that rule by recognizing documented sparse persistence; this paragraph describes the intermediate policy only.
 
 - **Check-then-use gap.** Readiness verified settings only before launching `agy`, and the smoke verified them only at start. Now:
   - the settings are fingerprinted (hash and credit state) after every metadata command;
@@ -132,11 +168,11 @@ If the setting is not visible on any surface, the effective behaviour cannot be 
 | Other blockers for benchmark use | `web_browsing_and_search` and `subagent_delegation`: unsupported. `plugins_skills_mcp`: unsupported (7 global plugins are present). `agent_tool_use_observability` and `hidden_retries_and_internal_loops`: unknown. |
 | Process cleanup | all three commands ran in a Windows job object; 0 processes remained active afterwards; temporary workspaces were removed empty |
 
-## Decision from the previous pass (resolved)
+## Historical decision — resolved during the 2026-09-29 credit-setting pass
 
-The previous pass left a choice between three options. This pass resolves it with the effective-setting check above, which rests on documented sparse persistence plus your confirmation of the account setting. It does not rely on a binary inspection, and it does not rewrite the file before each dispatch.
+The previous pass left a choice between three options. The 2026-09-29 credit-setting pass resolved it with the effective-setting check above, which rests on documented sparse persistence plus your confirmation of the account setting. It does not rely on a binary inspection, and it does not rewrite the file before each dispatch.
 
-## Official documentation (verified and quoted in the previous pass)
+## Official documentation recorded in the 2026-09-29 passes (not revalidated for this publication)
 
 - **Install:** `irm https://antigravity.google/cli/install.ps1 | iex`, into `C:\Users\<username>\AppData\Local\agy\bin`.
 - **Sign-in:** launching `agy` uses the OS keyring, and the browser opens if no session exists. `/logout` signs out.
@@ -148,9 +184,9 @@ The previous pass left a choice between three options. This pass resolves it wit
 - **`useG1Credits`:** the reference lists a boolean, default `false`, described as "*External builds only.* Uses personal AI credits for model calls once plan quotas are exhausted." The credits page says to set **Use G1 Credits** to **off** "to restrict fallback billing" and gives no default. The first version of this report wrongly said the pages conflict.
 - **No documented control for:** automatic model fallback; per-run disabling of browsing, search, subagents or plugins/MCP; temperature, seed or output-token limits; per-invocation request counts; or reporting the serving model.
 - **Context loading:** global `~/.gemini/GEMINI.md` and `GEMINI.md`/`AGENTS.md` in the active directory are loaded. Conversations are scoped to the working directory.
-- **`useG1Credits` policy:** requiring an explicit `false` is a **conservative project policy, not a confirmed platform requirement**.
+- **Historical `useG1Credits` policy:** the intermediate explicit-`false` requirement was a conservative project policy, not a platform requirement; it was superseded by the effective-setting correction above.
 
-## Audit of the adapter (previous pass, still valid)
+## Historical adapter audit — 2026-09-29
 
 - **No shell:** `Popen(list, shell=False)` with an absolute `.exe` only.
 - **Cleanup touches only the adapter's own processes:** a Windows job object is used, and the POSIX branch fails safe but is untested here.
@@ -161,7 +197,7 @@ The previous pass left a choice between three options. This pass resolves it wit
 - **Unobservable behaviour is labelled:** hidden retries, loops, tool use and fallback are marked `unknown`, and browsing, delegation, plugins and fallback are marked `unsupported`.
 - **`language_server.exe agentapi`** is never used.
 
-## Test results (actually observed in the latest pass)
+## Historical test results — 2026-09-29 credit-setting pass
 
 | Suite | Result | Evidence |
 |---|---|---|
@@ -171,7 +207,7 @@ The previous pass left a choice between three options. This pass resolves it wit
 | Engine source | Identical to the pre-edit snapshot: 148 files, manifest SHA-256 `a397aeeb20d862da17e5fbb71e9e1a5a1e255a95bbe252de45da72b42c3963a3` | `output/validation-antigravity/engine-credit-fix.json` |
 | Qwen pilot outputs (`output/experiments-v02/78d73497-11b6-46da-bd2f-51881170ac14`) | Byte-identical to the recorded manifest: 82 files, manifest SHA-256 `e29c708385effdf252e886c46084b784c47317b19db1c2d6164681e7a22670ec` | `output/validation-antigravity/qwen-pilot-manifest.json` |
 
-**Latest pass:** 3 tests were rewritten and 1 added, for a net 34 Antigravity tests. They cover:
+**2026-09-29 credit-setting pass:** 3 tests were rewritten and 1 added, for a net 34 Antigravity tests. They cover:
 
 - `false` omitted by sparse persistence, during both readiness and prompts, not blocking; the end-to-end synthetic smoke still runs with it.
 - The CLI turning credits on (explicit `true`) blocking readiness and the next dispatch.
@@ -186,11 +222,11 @@ The previous pass left a choice between three options. This pass resolves it wit
 - Unrelated settings preserved, with backups `.bak` then `.bak.1`.
 - A missing file is created, and a malformed file is left untouched.
 - Windows `%USERPROFILE%` path resolution, including the CLI command.
-- A synthetic CLI that strips the key during `agy models`, then treated as a blocker; the latest pass reinterprets this as sparse persistence.
-- Prompt dispatch blocked once the key had been dropped; the latest pass blocks only when the local value is not false.
-- The smoke blocking before any prompt when the key was dropped; the latest pass replaced this with the account-setting test.
+- A synthetic CLI that strips the key during `agy models`, then treated as a blocker; the 2026-09-29 credit-setting pass reinterprets this as sparse persistence.
+- Prompt dispatch blocked once the key had been dropped; the 2026-09-29 credit-setting pass blocks only when the local value is not false.
+- The smoke blocking before any prompt when the key was dropped; the 2026-09-29 credit-setting pass replaced this with the account-setting test.
 
-## Files changed
+## Historical files changed — September 2026 integration passes
 
 Overall, relative to the pre-edit snapshot:
 
@@ -198,7 +234,7 @@ Overall, relative to the pre-edit snapshot:
 - **Modified:** `README.md`, `end_harness/cli.py`, `end_harness/experiment.py`.
 - **Removed:** none.
 
-Changed in the latest pass:
+Changed in the 2026-09-29 credit-setting pass:
 
 - `end_harness/antigravity.py`: `credit_assessment()`, `local_credit_value()`, `credit_transition()`, the `account_credit_overages` config field, the credit control label, and the dispatch guard now using the effective-setting check.
 - `end_harness/antigravity_smoke.py`: the credit assessment is part of the offline prerequisites and the post-CLI re-check, and is recorded in the manifest.
@@ -219,27 +255,27 @@ Outside the repository, on your machine:
 - `C:\Users\<user>\.gemini\antigravity-cli\settings.json.bak` and `settings.json.bak.1` were added. Both are identical to the original.
 - `settings.json` itself is back to its original bytes, rewritten by `agy`.
 
-## Source fingerprints and smoke records
+## Historical source fingerprints and pre-smoke blocked records — 2026-09-29
 
-- The delivered Harness source fingerprint (`end_harness/*.py`) is `ee0b6cec56ee3381a29342e5649aad9ca545b86ee62fb8cb51f56923b70dda14`.
+- The Harness source fingerprint recorded for that historical pass (`end_harness/*.py`) is `ee0b6cec56ee3381a29342e5649aad9ca545b86ee62fb8cb51f56923b70dda14`.
 - The earlier zero-invocation blocked records predate the fixes:
   - `output/antigravity-smoke/6571b7bd-8dbe-4cd8-a27f-60b01964a778`, fingerprint `f4a5a72263434515d9428bdb5c97a02f0f2437f30c37e6cf466e44e4253b7cc8`.
   - `output/antigravity-smoke/cd63cf33-2362-4cda-be59-3870d14b7a6d`, fingerprint `b5f41976697f9afabbb50949d17e4c425d80a752ba7d9421ab284190996b021c`.
-- No smoke was run in this pass.
+- No smoke was run during that historical credit-setting pass. The later live runs are documented in the current-status table above.
 
-## Accounting (design unchanged)
+## Accounting limitation (retained)
 
 - One budget unit is one **provider invocation**: one `agy` process for one prompt. It is never one Gemini request.
 - Underlying requests, hidden retries, loops, tool use and model fallback are unknown and unbounded. Reported `usage` covers a whole invocation.
 - The fair request-budget benchmark remains blocked: `run_experiment` raises for this origin.
 
-## Other risk noted for a future smoke
+## Historical pre-smoke risk note — 2026-09-29
 
 The CLI keeps a `trustedWorkspaces` list, and the adapter runs every invocation in a fresh, untrusted temporary folder. Headless behaviour in an untrusted folder is undocumented. If it prompts or refuses, the first probe will fail and be recorded; the Harness will not add the folders to your trusted list.
 
-## Next step (Windows CMD)
+## Historical proposed next step — 2026-09-29 (not a current blocker)
 
-**No smoke or prompt will be sent until you explicitly authorize it.**
+**Historical authorization note:** these were preparation instructions recorded before the live smokes. They do not describe current readiness or authorize a new run.
 
 1. Open the CLI's settings panel. This sends no prompt, as long as you only use slash commands and don't type a request:
 
