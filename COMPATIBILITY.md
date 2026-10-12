@@ -1,6 +1,6 @@
 # END Harness offline compatibility — 2026-10-12
 
-**Result: the focused repair passes the supported Harness suite against the selected Engine 0.3.5.2 checkout: 154 tests in 64.286 seconds, 0 failures, 0 errors, 0 skips, exit 0.** This is offline integration validation, not live-provider readiness or a performance result.
+**Result: the focused repair passes the supported Harness suite against the selected Engine 0.3.5.2 checkout: 157 tests in 60.270 seconds, 0 failures, 0 errors, 0 skips, exit 0 after focused PR review.** This is offline integration validation, not live-provider readiness or a performance result.
 
 ## Verified baseline and dependency identity
 
@@ -13,8 +13,11 @@ The starting repository was clean on `main` at publication commit `415e38f14cbfb
 | Source fingerprint | `29c0bbce13559ea595d34d9c78d4812811bcade144deb6fdbd8a231c4da4fc82` |
 | Fingerprint scope | `end_engine/**/*.py` plus `pyproject.toml`; canonical per-file SHA-256 manifest |
 | Fresh baseline | 149 tests in 51.645s; 7 failures, 9 errors, 0 skips; exit 1 |
-| Final supported suite | 154 tests in 64.286s; 0 failures, 0 errors, 0 skips; exit 0 |
-| Preservation | Engine identity/manifest unchanged; all 301 pre-existing Harness output files unchanged by SHA-256 |
+| Initial repair suite | 154 tests in 64.286s; 0 failures, 0 errors, 0 skips; exit 0 |
+| Independently retested original PR head | `a3eff41785d78b8a580309a1c93493ac0e9e268b`: 154 tests in 55.901s; 0 failures, 0 errors, 0 skips |
+| Reviewed final suite | 157 tests in 60.270s; 0 failures, 0 errors, 0 skips; exit 0 |
+| Initial repair preservation | Engine identity/manifest unchanged; all 301 then-existing Harness output files unchanged by SHA-256 |
+| Focused review preservation | 326 pre-existing Harness output files and 3044 Engine files unchanged by SHA-256 (Git metadata, virtual environment and Python/test caches excluded from the Engine tree snapshot) |
 
 The earlier publication check on 2026-10-11 ran 149 tests in 69.928s with the same 7 failures and 9 errors. Its separate sandbox attempt was an infrastructure failure. Those logs remain unchanged; the fresh baseline above independently reproduced the reported compatibility failure.
 
@@ -69,6 +72,21 @@ The trusted registry explicitly declares the built-in checkers' development phas
 A new wrapped-answer regression demonstrated an additional adapter defect: `final_coverage` compared END's answer with the raw candidate container. Coverage and END-condition initial submission now use recorded Engine-owned `answer_content` when present, falling back to plain `content` for historical formats. The checker remains bound to the inspected answer; raw trajectory content is retained. No wrapper is guessed or stripped by Harness inspection.
 
 Five new regressions cover original-versus-canonical hash binding, missing phase, phase changes after execution, out-of-scope/final/different-artifact rejection, and wrapped-answer coverage/inspection. Existing unknown-outcome, durable journal/receipt, budget, rollback and historical-format tests remain enabled.
+
+## Focused PR #1 review — 2026-10-12
+
+The reported original PR head was verified locally and on GitHub, and its 154-test result independently reproduced. The five requested contract boundaries were reviewed against the actual Engine interfaces. Two additional concrete defects were demonstrated by regressions before correction:
+
+1. SINGLE/SIMPLE_REVISION submitted raw candidate containers while END submitted its selected answer. Baselines now use Engine's public `extract_answer_region` with the actual adapter-owned `answer_content`, exactly as END does. Raw content and observations remain in durable model-result events. Invalid/nonverbatim boundaries are rejected; prose is not silently converted to JSON. This adds no acceptance gate and changes no Engine policy.
+2. Loader identity accepted malformed version metadata, and the test's `$` anchor admitted trailing newlines. Identity now requires a full match of three or four ASCII numeric components; whitespace, suffixes, excess/missing components, non-ASCII digits and non-string values are rejected as unsupported. Prerelease/build version formats are not supported by this numeric version contract. Only actual Engine 0.3.5.2 was runtime-tested; synthetic metadata cases are not other-version compatibility claims.
+
+Three new test methods cover answer-selection equality/raw preservation across all conditions, invalid boundaries/unrepaired prose, and invalid version identity. The existing rollback regression now additionally connects C2's failed receipt ID and original artifact hash to its decisive `SEMANTIC_SUPPORTED` fatal finding, native C2→C1 rollback, C1's PASS receipt, and returned artifact coverage. Its 21-model/3-check accounting remains unchanged.
+
+The review confirmed keyword response construction preserves observations, every Engine-owned repair dispatch goes through the existing metered provider, trusted receipt scope/phase/version/targets and exact inspected artifact bind check contracts, and post-run full reference results stay outside END. Antigravity invocation accounting remains explicitly distinct from unknown Gemini request totals; benchmark eligibility remains false.
+
+Eight actual journals from both historical smokes were inspected read-only with complete closure, no unfinished calls and no torn tails. Existing synthetic historical-format tests also pass. Engine source/evidence and all pre-existing Harness evidence hashes remain unchanged. No blocking Engine defect was established. Final supported suite: **157 tests in 60.270s, 0 failures, 0 errors, 0 skips**, with the same explicit source and bytecode-disabled command above.
+
+New local-only review evidence is under `output/pr1-final-review-20261012/`: original-head/full final logs, regressions before/after correction, source/evidence hash snapshots, original PR diff, and historical inspection results. Raw logs/evidence remain excluded; older validation files are unchanged.
 
 ## Scope and remaining limitations
 

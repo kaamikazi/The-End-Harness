@@ -124,6 +124,54 @@ class ExperimentTests(unittest.TestCase):
         self.assertIn('development_feedback', judged.context['evidence'][0]['description'])
         self.assertIn('development subset only', judged.context['evidence'][0]['description'])
 
+    def test_all_conditions_submit_same_selected_answer_and_preserve_raw_response(self):
+        task = make_task('records', 'development', 100)
+        answer = canonical(solution(task)).decode()
+        for mode in ('adapter_span', 'wrapper'):
+            class Boundary(TaskFixture):
+                def for_run(self):
+                    return Boundary(self.task, self.calls)
+                def generate_structured(self, request):
+                    response = super().generate_structured(request)
+                    if request.purpose in ('initial_candidate', 'revision'):
+                        raw = ('untrusted container\n' + answer + '\ncontainer suffix' if mode == 'adapter_span'
+                               else '<think>\nsynthetic deliberation\n</think>\n' + answer)
+                        return ModelResponse({**response.content, 'content': raw},
+                            answer_content=answer if mode == 'adapter_span' else None)
+                    return response
+            for condition in ('SINGLE', 'SIMPLE_REVISION', 'END'):
+                with self.subTest(mode=mode, condition=condition):
+                    row = run_condition(task, condition, self.config, self.output/(mode+'-'+condition),
+                        Budget(BudgetLimits()), lambda t,c: Boundary(t, []), 'SYNTHETIC_FIXTURE', self.identity)
+                    self.assertEqual(row['run']['initial'], answer)
+                    self.assertEqual(row['run']['final'], answer)
+                    self.assertTrue(row['success'])
+                    events = [strict_loads(line) for line in
+                        (Path(row['run']['directory'])/'events.jsonl').read_bytes().splitlines()]
+                    response = next(e['payload']['response'] for e in events if e['type']=='model/result')
+                    self.assertNotEqual(response['content']['content'], answer)
+                    self.assertIn(answer, response['content']['content'])
+
+    def test_baseline_rejects_invalid_adapter_boundary_and_never_repairs_prose(self):
+        task = make_task('records', 'development', 100)
+        answer = canonical(solution(task)).decode()
+        for mode in ('invalid_span', 'prose'):
+            class InvalidBoundary(TaskFixture):
+                def generate_structured(self, request):
+                    return ModelResponse({'content': 'Here is the output: '+answer,
+                        'known_strengths': [], 'confidence': None},
+                        answer_content='foreign span' if mode == 'invalid_span' else None)
+            row = run_condition(task, 'SINGLE', self.config, self.output/mode, Budget(BudgetLimits()),
+                lambda t,c: InvalidBoundary(t, []), 'SYNTHETIC_FIXTURE', self.identity)
+            self.assertFalse(row['success'])
+            self.assertEqual(row['requests'], 1)
+            if mode == 'invalid_span':
+                self.assertIsNone(row['run']['final'])
+                self.assertTrue(any('Ambiguous answer boundary' in e['message'] for e in row['run']['errors']))
+            else:
+                self.assertEqual(row['run']['final'], 'Here is the output: '+answer)
+                self.assertEqual(row['final_evaluation']['status'], 'INVALID')
+
     def test_shared_parent_budget_blocks_further_dispatch_across_runs(self):
         parent = Budget(BudgetLimits(model_attempts=1))
         a, b = Budget(BudgetLimits(), parent=parent), Budget(BudgetLimits(), parent=parent)

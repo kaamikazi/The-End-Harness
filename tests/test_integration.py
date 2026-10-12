@@ -1,5 +1,6 @@
 from dataclasses import replace
 import os
+import re
 from pathlib import Path
 import subprocess
 import sys
@@ -43,6 +44,21 @@ class RealEngineIntegrationTests(unittest.TestCase):
         receipts = [strict_loads(p.read_bytes()) for p in (directory / "receipts").glob('*.json')]
         self.assertEqual({r["engine"]["local_id"]: r["verdict"] for r in receipts}, {"C0": "FAIL", "C1": "PASS", "C2": "FAIL"})
         self.assertTrue(all(r["engine"]["trajectory_id"] == trajectory["trajectory_id"] for r in receipts))
+        by_candidate = {r['engine']['local_id']: r for r in receipts}
+        regressed = by_candidate['C2']
+        restored = by_candidate[trajectory['rollback_events'][0]['to_candidate']]
+        evidence = next(e for e in trajectory['verifier_evidence']
+                        if e['artifact_id'] == regressed['execution_id'])
+        self.assertEqual(evidence['candidate_id'], 'C2')
+        self.assertFalse(evidence['passed'])
+        self.assertEqual(evidence['contract']['artifact_sha256'], regressed['artifact']['candidate_hash'])
+        fatal = [i for j in (*trajectory['judgments'], *trajectory['adversarial_judgments'])
+                 if j['candidate_id']=='C2' for i in j['fatal_issues']]
+        self.assertTrue(any(i['decisive'] and i['semantic_grounding']=='SEMANTIC_SUPPORTED'
+                            and regressed['execution_id'] in i['evidence'] for i in fatal))
+        self.assertEqual(restored['verdict'], 'PASS')
+        self.assertEqual(result.final_candidate_coverage['engine'], restored['engine'])
+        self.assertEqual(result.final_candidate_coverage['artifact'], restored['artifact'])
         self.assertTrue(inspect_run(directory)["completed"])
         self.assertEqual(result.budget["attempts"], {"model": 21, "check": 3})
         # All underlying generator/verifier/judge/adversary requests are counted once.
@@ -161,6 +177,6 @@ run_task("crash boundary", RunConfig(source, output), generator=Crash(), judge=j
         # The expected version is read independently from the explicitly selected checkout, not hard-coded.
         with (self.source / "pyproject.toml").open("rb") as stream:
             expected = tomllib.load(stream)["project"]["version"]
-        self.assertRegex(expected, r"^\d+\.\d+\.\d+(?:\.\d+)?$")
+        self.assertIsNotNone(re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+(?:\.[0-9]+)?", expected))
         self.assertEqual(first["version"], expected)
         self.assertEqual(first["source"], str(self.source.resolve()))

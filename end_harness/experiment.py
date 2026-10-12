@@ -48,6 +48,7 @@ class ExperimentConfig:
 def _baseline(task, condition, output, budget, provider):
     from end_engine.models.base import ModelRequest
     from end_engine.models.schema import CANDIDATE
+    from end_engine.core.output_format import extract_answer_region
     run_id = str(uuid4())
     journal = Journal(output / run_id, run_id)
     directory = journal.directory
@@ -70,7 +71,12 @@ def _baseline(task, condition, output, budget, provider):
             response = wrapped.generate_structured(request)
             from end_engine.models.schema import validate
             validate(response.content, CANDIDATE)
-            final = response.content['content']
+            # Apply the same public answer-boundary contract as END. Raw provider
+            # content/observations remain in the preceding durable model/result event.
+            region = extract_answer_region(response.content['content'], response.answer_content)
+            if region.status == 'AMBIGUOUS':
+                raise ValueError('Ambiguous answer boundary: ' + region.reason)
+            final = region.content
             candidates.append(final)
             journal.append('baseline/candidate', {'local_id': f'B{iteration}', 'content': final})
             write_once(directory / 'candidates' / f'B{iteration}.txt', final.encode('utf-8'))

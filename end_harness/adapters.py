@@ -3,6 +3,7 @@ from dataclasses import asdict, dataclass
 import importlib
 from copy import deepcopy
 from pathlib import Path
+import re
 import sys
 import tomllib
 from uuid import uuid4
@@ -31,7 +32,10 @@ def _source_identity(source: Path) -> dict:
                 for p in sorted((source / "end_engine").rglob("*.py"))}
     project = (source / "pyproject.toml").read_bytes()
     manifest["pyproject.toml"] = digest(project)
-    return {"version": tomllib.loads(project.decode("utf-8"))["project"]["version"],
+    version = tomllib.loads(project.decode("utf-8"))["project"]["version"]
+    if not isinstance(version, str) or re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+(?:\.[0-9]+)?", version) is None:
+        raise ValueError("Unsupported Engine version: expected three or four ASCII numeric components")
+    return {"version": version,
             "source": str(source), "source_sha256": digest(canonical(manifest)),
             "source_manifest": manifest, "fingerprint_scope": "end_engine/**/*.py and pyproject.toml",
             "commit": None, "provenance": "harness_controlled_initial_load"}
