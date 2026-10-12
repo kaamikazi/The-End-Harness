@@ -11,14 +11,14 @@ from pathlib import Path
 import time
 from uuid import uuid4
 from . import __version__
-from .adapters import load_engine
+from .adapters import initial_candidate_request, load_engine
 from .antigravity import (ACCOUNTING, BENCHMARK_BLOCKERS, DATA_ORIGIN, DOCUMENTATION, AntigravityConfig,
                           AntigravityProvider, SessionRegistry, control_assessment, credit_assessment, inspect_cli,
                           survey_context, verify_settings)
 from .budget import Budget, BudgetLimits
 from .encoding import canonical, diagnostic, digest, strict_loads, write_once
 from .events import Journal, utc_now
-from .experiment import INITIAL_PROMPT, PROTOCOL_VERSION, ExperimentConfig, run_condition
+from .experiment import PROTOCOL_VERSION, ExperimentConfig, run_condition
 from .providers import BudgetedModel
 from .tasks import DEV_SCOPE, frozen_suite
 
@@ -46,12 +46,11 @@ class SmokeLimits:
 def probe_requests(task):
     """Engine request shapes: candidate generation, primary judgment, and the verifier control response."""
     from end_engine.models.base import ModelRequest
-    from end_engine.models.schema import CANDIDATE, verification_schema
+    from end_engine.models.schema import verification_schema
     from end_engine.quality.schema import judgment_schema
 
     def candidate(content):
-        return ModelRequest('initial_candidate', INITIAL_PROMPT,
-                            {'task': task.prompt(), 'iteration': 0, 'candidate': None, 'revision_plan': None}, CANDIDATE)
+        return initial_candidate_request(task.prompt())
 
     def judgment(content):
         return ModelRequest('judgment',

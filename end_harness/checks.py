@@ -32,6 +32,7 @@ class RegisteredCheck:
     validate_input: Callable[[dict, dict], None]
     execute: Callable[[dict, dict], CheckOutput]
     output_contract: str = "CheckOutput/pass-or-fail/1"
+    evidence_phase: str | None = None  # Trusted registration; missing is never inferred as final.
 
     @property
     def fixture_hash(self):
@@ -59,6 +60,7 @@ class ExecutionReceipt:
     call_seq: int
     task_hash: str | None = None
     task_input_hash: str | None = None
+    evidence_phase: str | None = None  # Additive receipt field; historical missing phase stays missing.
 
 
 class CheckRegistry:
@@ -72,6 +74,8 @@ class CheckRegistry:
             raise ValueError("Duplicate/invalid check registration")
         if not check.supported_scopes or len(set(check.supported_scopes)) != len(check.supported_scopes):
             raise ValueError("Check must declare distinct supported scopes")
+        if check.evidence_phase not in (None, "development", "final"):
+            raise ValueError("Invalid registered evidence phase")
         if not isinstance(strict_loads(check.configuration_json), dict):
             raise ValueError("Check configuration must be a JSON object")
         self._checks[check.check_id] = check
@@ -153,7 +157,8 @@ class CheckExecutor:
         receipt = ExecutionReceipt("1.0", self.journal.run_id, execution_id, engine, artifact,
             check_id, check.version, check.fixture_hash, status, verdict, scopes, targets,
             canonical(observations).decode(), started, utc_now(), time.monotonic()-clock_start, call.seq,
-            task_hash=configuration.get('task_hash'), task_input_hash=configuration.get('task_input_hash'))
+            task_hash=configuration.get('task_hash'), task_input_hash=configuration.get('task_input_hash'),
+            evidence_phase=check.evidence_phase)
         self.budget.settle(reservation)
         try:
             write_once(self.journal.directory / "receipts" / (execution_id + ".json"), canonical(asdict(receipt)))
@@ -178,7 +183,8 @@ class CheckExecutor:
         if receipt.artifact != artifact or receipt.engine != engine:
             raise ValueError("Stale or mismatched candidate receipt")
         self.store.load(artifact)
-        if check is None or receipt.check_version != check.version or receipt.fixture_hash != check.fixture_hash:
+        if (check is None or receipt.check_version != check.version or receipt.fixture_hash != check.fixture_hash
+                or receipt.evidence_phase != check.evidence_phase):
             raise ValueError("Receipt registration/configuration mismatch")
         if receipt.status != "COMPLETED" or receipt.verdict not in ("PASS", "FAIL"):
             raise ValueError("Incomplete execution cannot become evidence")
@@ -232,4 +238,4 @@ def deployment_policy(data, fixture):
 
 def default_registry():
     return CheckRegistry([RegisteredCheck("deployment.safety", "1", "deployment-policy/1", (POLICY_CLAIM,),
-        canonical(FIXTURE).decode(), validate_policy, deployment_policy)])
+        canonical(FIXTURE).decode(), validate_policy, deployment_policy, evidence_phase="development")])

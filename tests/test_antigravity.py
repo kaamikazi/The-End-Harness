@@ -102,6 +102,7 @@ class AdapterTests(SyntheticAgyCase):
             first = provider.generate_structured(self.request())
             second = provider.generate_structured(self.request())
         self.assertEqual(first.content, {'answer': 0})
+        self.assertIsNone(first.answer_content)  # Metadata must not become Engine answer authority.
         self.assertEqual(first.usage, {'input_tokens': 100, 'output_tokens': 20, 'total_tokens': 120})
         accounting = first.observation['accounting']
         self.assertEqual((accounting['provider_invocations'], accounting['process_started']), (1, True))

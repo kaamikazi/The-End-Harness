@@ -54,6 +54,7 @@ class OllamaTests(unittest.TestCase):
         self.assertEqual(sent['format'], self.schema)
         self.assertFalse(sent['stream'])
         self.assertEqual(result.content, {'answer': 3})
+        self.assertIsNone(result.answer_content)  # Transport observations are not an answer boundary.
         self.assertEqual(result.usage, {'input_tokens': 10, 'output_tokens': 4})
         self.assertEqual(result.observation['raw_output'], '{"answer":3}')
         self.assertEqual(result.observation['validation_status'], 'valid')

@@ -46,7 +46,7 @@ This publication review independently checked both manifests/results, the develo
 
 ## Current offline compatibility
 
-[COMPATIBILITY.md](COMPATIBILITY.md) records only checks performed on 2026-10-11. The selected checkout is **Engine 0.3.5.2**, fingerprint `29c0bbce13559ea595d34d9c78d4812811bcade144deb6fdbd8a231c4da4fc82`; the unchanged supported host test run **failed: 149 tests, 7 failures, 9 errors**. No compatibility pass is claimed. The 0.3.2/149-Harness/135-Engine values reported in September are historical and do not identify the current checkout or a new Engine test result. No live readiness, authentication, quota, model availability, or credit setting was reassessed here.
+[COMPATIBILITY.md](COMPATIBILITY.md) records the offline repair on **2026-10-12**. The selected checkout remains **Engine 0.3.5.2**, fingerprint `29c0bbce13559ea595d34d9c78d4812811bcade144deb6fdbd8a231c4da4fc82`. The fresh baseline reproduced **149 tests, 7 failures, 9 errors**; after focused Harness repairs, **154 tests passed with 0 failures, 0 errors and 0 skips**. The 2026-10-11 publication failure remains a historical check. This repair did not rerun either live smoke or change their evidence. The 0.3.2/149-Harness/135-Engine values reported in September are historical and do not identify the current checkout or a new Engine test result. No live readiness, authentication, quota, model availability, or credit setting was reassessed here.
 
 ## Historical integration notes — 2026-09-29
 

@@ -48,6 +48,29 @@ class RealEngineIntegrationTests(unittest.TestCase):
         # All underlying generator/verifier/judge/adversary requests are counted once.
         self.assertEqual(len(trajectory["model_calls"]), result.budget["attempts"]["model"])
 
+    def test_wrapped_answer_keeps_inspected_checker_binding_and_inspection(self):
+        from end_engine.models.base import ModelResponse
+        from end_harness.encoding import digest
+        class Standalone(SyntheticGenerator):
+            def generate_structured(self, request):
+                response = super().generate_structured(request)
+                if request.purpose in ('initial_candidate', 'revision'):
+                    return ModelResponse({**response.content,
+                        'content': '<think>\nsynthetic deliberation\n</think>\n' + response.content['content']})
+                return response
+        _, judge = demo_providers(self.source)
+        result = run_task('Evaluate the bounded abstract deployment policy.', self.config,
+            generator=Standalone(), judge=judge, claim_extractor=PolicyClaimExtractor())
+        self.assertEqual(result.engine_result['answer'], candidate_text('improved'))
+        self.assertEqual(result.final_candidate_coverage['status'], 'recorded')
+        self.assertEqual(result.final_candidate_coverage['candidate_hash'], digest(candidate_text('improved').encode()))
+        directory = Path(result.directory)
+        trajectory = strict_loads((directory/'trajectory.json').read_bytes())
+        self.assertTrue(trajectory['candidates'][1]['content'].startswith('<think>'))
+        self.assertEqual(trajectory['candidates'][1]['answer_content'], candidate_text('improved'))
+        self.assertEqual(inspect_run(directory)['result']['final_candidate_coverage'], result.final_candidate_coverage)
+        self.assertEqual(result.budget['attempts'], {'model': 21, 'check': 3})
+
     def test_final_engine_events_explicitly_post_run_imports(self):
         result = self.run_fixture()
         events = [strict_loads(line) for line in (Path(result.directory) / "events.jsonl").read_bytes().splitlines()]
@@ -138,6 +161,6 @@ run_task("crash boundary", RunConfig(source, output), generator=Crash(), judge=j
         # The expected version is read independently from the explicitly selected checkout, not hard-coded.
         with (self.source / "pyproject.toml").open("rb") as stream:
             expected = tomllib.load(stream)["project"]["version"]
-        self.assertRegex(expected, r"^\d+\.\d+\.\d+$")
+        self.assertRegex(expected, r"^\d+\.\d+\.\d+(?:\.\d+)?$")
         self.assertEqual(first["version"], expected)
         self.assertEqual(first["source"], str(self.source.resolve()))

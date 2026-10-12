@@ -182,14 +182,18 @@ class ExperimentTests(unittest.TestCase):
         seen = []
         class Invalid(TaskFixture):
             def generate_structured(self, request):
-                seen.append(self.task.task_id)
+                seen.append((self.task.task_id, request))
                 return ModelResponse({'bad': 'envelope'})
         result = run_experiment(replace(self.config, mode='pilot'),
             provider_factory=lambda task, condition: Invalid(task, []),
             data_origin='SYNTHETIC_FIXTURE', model_identity=self.identity)
         self.assertEqual(result['status'], 'BLOCKED')
-        self.assertEqual(len(seen), 3)
-        self.assertEqual(len(set(seen)), 1)
+        # Three conditions dispatch once; END owns one targeted schema-repair call.
+        self.assertEqual(len(seen), 4)
+        self.assertEqual(len({task_id for task_id, _ in seen}), 1)
+        self.assertEqual(sum('protocol_repair' in r.context for _, r in seen), 1)
+        self.assertTrue(all(r.purpose == 'initial_candidate' for _, r in seen))
+        self.assertEqual(result['all_runs']['by_condition']['END']['requests'], 2)
         self.assertEqual(result['selected_split']['by_condition']['END']['finished'], 0)
         self.assertEqual(result['selected_split']['by_condition']['END']['planned'], 12)
 

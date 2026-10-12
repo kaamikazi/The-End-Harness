@@ -30,6 +30,12 @@ def coverage_record(run_id, engine, *, artifact=None, candidate_hash=None,
             "repeat_count": 1, "conflicting_checks": []}
 
 
+def recorded_answer(candidate):
+    """Use Engine-owned answer selection when recorded; legacy records retain plain content."""
+    answer = candidate.get('answer_content')
+    return answer if answer is not None else candidate['content']
+
+
 def final_coverage(run_id, result, trajectory, history, required, artifact_schema="deployment-policy/1"):
     """Resolve END's actual returned identity, then select one exact collection."""
     def unavailable(reason, engine=None, **binding):
@@ -49,7 +55,7 @@ def final_coverage(run_id, result, trajectory, history, required, artifact_schem
             return unavailable("engine_final_identity_conflict")
         candidate_id = final_id
         candidate = next((c for c in trajectory.get("candidates", ()) if c["candidate_id"] == candidate_id), None)
-        if candidate and candidate["content"] != content:
+        if candidate and recorded_answer(candidate) != content:
             return unavailable("returned_content_mismatch")
         if candidate_id and candidate is None:
             return unavailable("final_candidate_record_unavailable")

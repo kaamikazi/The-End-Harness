@@ -7,11 +7,12 @@ from pathlib import Path
 import time
 from uuid import uuid4
 from . import __version__
-from .adapters import load_engine
+from .adapters import initial_candidate_request, load_engine
 from .antigravity import BENCHMARK_BLOCKERS, DATA_ORIGIN as ANTIGRAVITY_ORIGIN, AntigravityProvider
 from .artifacts import ArtifactStore
 from .budget import Budget, BudgetExhausted, BudgetLimits
 from .checks import CheckExecutor
+from .coverage import recorded_answer
 from .encoding import canonical, diagnostic, digest, strict_loads, write_once
 from .events import Journal
 from .ollama import OllamaConfig, OllamaProvider, installed_model
@@ -20,8 +21,7 @@ from .runtime import RunConfig, run_task
 from .tasks import development_registry, frozen_suite, task_binding
 
 CONDITIONS = ('SINGLE', 'SIMPLE_REVISION', 'END')
-PROTOCOL_VERSION = 'controlled-evaluation/1.1'
-INITIAL_PROMPT = 'Produce an initial answer to the task. State assumptions and material limitations.'
+PROTOCOL_VERSION = 'controlled-evaluation/1.2'
 
 
 @dataclass(frozen=True)
@@ -62,10 +62,12 @@ def _baseline(task, condition, output, budget, provider):
         while True:
             iteration = len(candidates)
             purpose = 'initial_candidate' if iteration == 0 else 'revision'
-            context = ({'task': task.prompt(), 'iteration': 0, 'candidate': None, 'revision_plan': None} if iteration == 0 else
-                       {'task': task.prompt(), 'previous_candidate': candidates[-1], 'development_feedback': feedback})
-            prompt = INITIAL_PROMPT if iteration == 0 else 'Revise the candidate using only the supplied development feedback. Return a complete answer.'
-            response = wrapped.generate_structured(ModelRequest(purpose, prompt, context, CANDIDATE))
+            context = ({'task': task.prompt(), 'previous_candidate': candidates[-1], 'development_feedback': feedback}
+                       if iteration else None)
+            prompt = 'Revise the candidate using only the supplied development feedback. Return a complete answer.'
+            request = (initial_candidate_request(task.prompt()) if iteration == 0 else
+                       ModelRequest(purpose, prompt, context, CANDIDATE))
+            response = wrapped.generate_structured(request)
             from end_engine.models.schema import validate
             validate(response.content, CANDIDATE)
             final = response.content['content']
@@ -116,7 +118,7 @@ def _end(task, config, output, budget, provider):
     path = Path(result.directory) / 'trajectory.json'
     if path.exists():
         trajectory = strict_loads(path.read_bytes())
-        initial = trajectory['candidates'][0]['content'] if trajectory.get('candidates') else None
+        initial = recorded_answer(trajectory['candidates'][0]) if trajectory.get('candidates') else None
     engine_result = result.engine_result
     return {'run_id': result.run_id, 'directory': result.directory, 'initial': initial,
         'final': engine_result['answer'] if engine_result and result.final_candidate else None,

@@ -8,7 +8,7 @@ v0.2 adds an explicit local Ollama adapter and a frozen SINGLE / SIMPLE_REVISION
 
 An optional **Antigravity CLI (`agy`) provider** can run a bounded integration smoke with a Google AI plan's account-authenticated headless route. It is not eligible for the controlled benchmark; see [below](#optional-antigravity-provider-integration-smoke-only) and [ANTIGRAVITY_INTEGRATION_REPORT.md](ANTIGRAVITY_INTEGRATION_REPORT.md).
 
-**Current offline compatibility check (2026-10-11): failed against the selected Engine 0.3.5.2 checkout—149 tests, 7 failures, 9 errors.** See [COMPATIBILITY.md](COMPATIBILITY.md) for the actual source fingerprint, command, infrastructure retry, and unresolved issues. Historical Antigravity smokes used Engine 0.3.0 and 0.3.2; the repeat used 3 probes plus 13 END provider invocations, accepted provisionally, and passed development/reference checks. See [ANTIGRAVITY_INTEGRATION_REPORT.md](ANTIGRAVITY_INTEGRATION_REPORT.md) for both records and their limitations. The Qwen pilot stopped at preflight with no held-out evaluation. These records demonstrate no task-performance improvement.
+**Current offline compatibility check (2026-10-12): passes against the selected Engine 0.3.5.2 checkout—154 tests, 0 failures, 0 errors, 0 skips.** See [COMPATIBILITY.md](COMPATIBILITY.md) for the fingerprint, reproduced 149-test failing baseline, repairs, and support limits. Historical Antigravity smokes used Engine 0.3.0 and 0.3.2; the repeat used 3 probes plus 13 END provider invocations, accepted provisionally, and passed development/reference checks. See [ANTIGRAVITY_INTEGRATION_REPORT.md](ANTIGRAVITY_INTEGRATION_REPORT.md) for both records and their limitations. The Qwen pilot stopped at preflight with no held-out evaluation. These records demonstrate no task-performance improvement.
 
 The original offline deployment demo remains **SYNTHETIC**. Its trusted checker enumerates transitions in an abstract model. Fixture runs and replayed responses are never counted as live-model evidence.
 
@@ -66,7 +66,7 @@ The smoke writes its manifest to a fresh `output/antigravity-smoke/<id>/` direct
 
 ## Run without installing packages
 
-Requires Python 3.11+ and a separate local Engine source checkout. The selected Engine identity and actual test result for the 2026-10-11 publication check are in [COMPATIBILITY.md](COMPATIBILITY.md); previous releases were checked against Engine 0.3.0 and 0.3.2. The integration test reads the expected Engine version from the selected checkout's `pyproject.toml` rather than pinning a release. There are no runtime third-party dependencies, downloads, or global installations. The synthetic demo and tests work offline; real experiments use only the explicitly selected local service. The Engine is not copied into this package or fetched from PyPI.
+Requires Python 3.11+ and a separate local Engine source checkout. The selected Engine identity and actual test result for the 2026-10-12 offline repair are in [COMPATIBILITY.md](COMPATIBILITY.md); previous releases were checked against Engine 0.3.0 and 0.3.2. The integration test reads the expected Engine version from the selected checkout's `pyproject.toml` rather than pinning a release. There are no runtime third-party dependencies, downloads, or global installations. The synthetic demo and tests work offline; real experiments use only the explicitly selected local service. The Engine is not copied into this package or fetched from PyPI.
 
 On this machine, from PowerShell:
 
@@ -96,7 +96,7 @@ $env:PYTHONPATH = 'E:\The End Engine'
 & $HarnessPython -B -m unittest discover -s 'E:\The End Engine\tests' -v
 ```
 
-That suite uses temporary output directories. `-B` prevents bytecode writes into the read-only reference. Historical checks reported 135 Engine tests on 0.3.2 and 115 on 0.3.0. The Engine suite was not run for this documentation task; those counts are not a current Engine-test claim. Current Harness compatibility is reported separately in [COMPATIBILITY.md](COMPATIBILITY.md).
+That suite uses temporary output directories. `-B` prevents bytecode writes into the read-only reference. Historical checks reported 135 Engine tests on 0.3.2 and 115 on 0.3.0. The Engine suite was not run for the 2026-10-11 publication or the 2026-10-12 Harness repair; those counts are not a current Engine-test claim. Current Harness compatibility is reported separately in [COMPATIBILITY.md](COMPATIBILITY.md).
 
 ## What the demo shows
 
@@ -106,7 +106,7 @@ That suite uses temporary output directories. `-B` prevents bytecode writes into
 | C1: restrict stopping to preserve one healthy replica | PASS within enumerated bounds | Accepts verified within recorded scope |
 | C2: remove that guard | FAIL; counterexample traces retained | Rejects severe regression and rolls back to C1 |
 
-The demo explicitly sets the Engine's supported `post_acceptance_cycles=1` option for the regression probe. Generic `RunConfig` defaults to zero and returns after acceptance without requesting that extra work. The Harness does not assign the returned candidate. Synthetic pairwise judge responses trigger END's existing regression comparator, while candidate checks are independent executions over each candidate's data.
+The demo explicitly sets the Engine's supported `post_acceptance_cycles=1` option for the regression probe. Generic `RunConfig` defaults to zero and returns after acceptance without requesting that extra work. The Harness does not assign the returned candidate. A synthetic fatal finding about C2 cites its actual failed, candidate-bound checker receipt and declared safety scope. END grounds that finding and performs native rollback; pairwise model comparison scores remain advisory. Candidate checks are independent executions over each candidate's data.
 
 The normal fixture uses **21 underlying model requests and 3 check attempts**. Generator, basic verifier, primary judge, adversarial-test generation, adversarial judge, and pairwise comparisons all use the same budget. Every fixture response has unknown token usage; totals are not fabricated.
 

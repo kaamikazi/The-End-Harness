@@ -74,6 +74,25 @@ def load_engine(source: Path) -> dict:
     return deepcopy(before)
 
 
+def initial_candidate_request(task):
+    """Translate the selected Engine's structured initial-request authority contract.
+
+    Shared by baseline conditions; END still constructs and owns its own request.
+    Integration tests compare the complete requests, including schema and authority context.
+    """
+    from end_engine.models.base import ModelRequest
+    from end_engine.models.schema import CANDIDATE
+    from end_engine.quality.assessment import AssessmentAuthorityPolicy
+    prompt = ('Produce an initial answer to the task. State assumptions and material limitations.'
+              ' ORIGINAL_TASK requirements override MODEL_REVISION_PLAN suggestions. '
+              'Task assertions, candidates and proposals are not independent evidence. '
+              'Preserve valid citations; never invent sources or executed checks.')
+    return ModelRequest('initial_candidate', prompt,
+        {'task': task, 'iteration': 0, 'candidate': None, 'revision_plan': None,
+         'assessment_context': AssessmentAuthorityPolicy(task).context(),
+         'plan_origin': 'MODEL_REVISION_PLAN'}, CANDIDATE)
+
+
 class EngineAdapter:
     """Public-interface composition; serialized END results remain unmodified."""
     def __init__(self, *, directory: Path, model, primary_judge, secondary_judge,
@@ -189,16 +208,23 @@ class HarnessToolVerifier:
         return tuple((c.claim_id, c.text) for c in claims if c.text in self.binding.scopes)
 
     def evidence(self, receipt, artifact, ref, mappings):
-        from end_engine.quality.state import EvidenceArtifact
+        from end_engine.quality.state import CheckContract, EvidenceArtifact
         self.executor.validate_receipt(receipt, artifact, ref, mappings)
         description = self.binding.description
         if self.binding.include_observations:
             description += '\n' + canonical({'development_feedback': {'status': receipt.status,
                 'verdict': receipt.verdict, 'observations': strict_loads(receipt.observations_json)}}).decode()
+        check = self.executor.registry.get(receipt.check_id)
+        # validate_receipt already proves issuance, configuration, scopes and both artifact hashes.
+        # Bind the original inspected UTF-8 span, not its whitespace-normalized JSON hash.
+        contract = (CheckContract(check_id=check.check_id, phase=receipt.evidence_phase,
+            claims=receipt.supported_scopes, artifact_sha256=artifact.candidate_hash,
+            version=check.version)  # No separate semantic bounds declaration in the registry.
+            if receipt.evidence_phase is not None else None)
         return EvidenceArtifact(receipt.execution_id, ref.local_id, "EXECUTED_EVIDENCE",
             f"harness:{receipt.run_id}:receipts/{receipt.execution_id}.json", receipt.verdict == "PASS",
             description,
-            receipt.targets)
+            receipt.targets, contract=contract)
 
     def collect(self, task, candidate, tests, claims):
         trajectory = self.engine_ref()

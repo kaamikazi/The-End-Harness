@@ -148,4 +148,4 @@ def task_binding(task):
 
 def development_registry(task):
     return CheckRegistry([RegisteredCheck(task.development_check, '1', task.artifact_schema, (DEV_SCOPE,),
-        canonical(task.configuration('development')).decode(), validate_output, development_check)])
+        canonical(task.configuration('development')).decode(), validate_output, development_check, evidence_phase="development")])
