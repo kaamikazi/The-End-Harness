@@ -149,6 +149,57 @@ class CheckTests(RuntimeCase):
         self.assertEqual(len([e for e in self.events() if e["type"] == "check/unexecuted"]), 2)
         self.assertIn("receipts/", evidence[0].source)
 
+    def test_engine_contract_uses_issued_receipt_scope_and_original_inspected_hash(self):
+        content = '  ' + candidate_text('improved') + '\n'
+        artifact = self.store.capture(content)
+        receipt = self.execute(artifact)
+        evidence = HarnessToolVerifier(self.executor, lambda: self.ref).evidence(
+            receipt, artifact, self.ref, self.mappings)
+        contract = evidence.contract
+        self.assertEqual(contract.check_id, receipt.check_id)
+        self.assertEqual(contract.version, receipt.check_version)
+        self.assertEqual(contract.claims, receipt.supported_scopes)
+        self.assertEqual(contract.phase, 'development')
+        self.assertEqual(contract.artifact_sha256, artifact.candidate_hash)
+        self.assertNotEqual(contract.artifact_sha256, artifact.tested_hash)
+        self.assertEqual(contract.properties, ())
+        self.assertEqual(contract.bounds, '')  # No separate semantic bounds declared.
+
+    def test_phase_cannot_be_changed_after_execution_to_expand_authority(self):
+        receipt = self.execute()
+        self.assertEqual(receipt.evidence_phase, 'development')
+        stored = strict_loads((self.directory/'receipts'/(receipt.execution_id+'.json')).read_bytes())
+        self.assertEqual(stored['evidence_phase'], 'development')
+        spec = replace(self.executor.registry.get('deployment.safety'), evidence_phase='final')
+        self.executor.registry = CheckRegistry([spec])
+        with self.assertRaisesRegex(ValueError, 'registration/configuration mismatch'):
+            HarnessToolVerifier(self.executor, lambda: self.ref).evidence(
+                receipt, self.artifact, self.ref, self.mappings)
+
+    def test_unregistered_phase_remains_missing(self):
+        spec = replace(default_registry().get('deployment.safety'), evidence_phase=None)
+        self.executor.registry = CheckRegistry([spec])
+        receipt = self.execute()
+        evidence = HarnessToolVerifier(self.executor, lambda: self.ref).evidence(
+            receipt, self.artifact, self.ref, self.mappings)
+        self.assertIsNone(evidence.contract)
+        self.assertEqual(evidence.targets, ('CL001',))
+
+    def test_development_contract_cannot_prove_final_success_or_another_artifact(self):
+        from end_engine.quality.integrity import scope_gap
+        receipt = self.execute()
+        evidence = HarnessToolVerifier(self.executor, lambda: self.ref).evidence(
+            receipt, self.artifact, self.ref, self.mappings)
+        claim = Claim('CL001', POLICY_CLAIM, 'technical', 'C1')
+        self.assertIsNone(scope_gap(evidence, claim, self.artifact.candidate_hash))
+        self.assertEqual(scope_gap(evidence, claim, '0'*64), 'checked a different artifact')
+        self.assertIsNotNone(scope_gap(evidence, replace(claim, text='All tests pass'),
+                                      self.artifact.candidate_hash))
+        # Even an exact final-scope registration still needs an actual final phase.
+        final = replace(evidence, contract=replace(evidence.contract, claims=('All tests pass',)))
+        self.assertEqual(scope_gap(final, replace(claim, text='All tests pass'),
+            self.artifact.candidate_hash), 'development-scope evidence cannot support a final-task claim')
+
     def test_no_cross_candidate_cache_even_for_identical_content(self):
         self.execute()
         self.execute()

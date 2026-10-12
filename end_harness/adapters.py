@@ -3,6 +3,7 @@ from dataclasses import asdict, dataclass
 import importlib
 from copy import deepcopy
 from pathlib import Path
+import re
 import sys
 import tomllib
 from uuid import uuid4
@@ -31,7 +32,10 @@ def _source_identity(source: Path) -> dict:
                 for p in sorted((source / "end_engine").rglob("*.py"))}
     project = (source / "pyproject.toml").read_bytes()
     manifest["pyproject.toml"] = digest(project)
-    return {"version": tomllib.loads(project.decode("utf-8"))["project"]["version"],
+    version = tomllib.loads(project.decode("utf-8"))["project"]["version"]
+    if not isinstance(version, str) or re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+(?:\.[0-9]+)?", version) is None:
+        raise ValueError("Unsupported Engine version: expected three or four ASCII numeric components")
+    return {"version": version,
             "source": str(source), "source_sha256": digest(canonical(manifest)),
             "source_manifest": manifest, "fingerprint_scope": "end_engine/**/*.py and pyproject.toml",
             "commit": None, "provenance": "harness_controlled_initial_load"}
@@ -72,6 +76,25 @@ def load_engine(source: Path) -> dict:
         raise ValueError("END Engine source changed during initial load; use a fresh process")
     _ENGINE_IDENTITY = before
     return deepcopy(before)
+
+
+def initial_candidate_request(task):
+    """Translate the selected Engine's structured initial-request authority contract.
+
+    Shared by baseline conditions; END still constructs and owns its own request.
+    Integration tests compare the complete requests, including schema and authority context.
+    """
+    from end_engine.models.base import ModelRequest
+    from end_engine.models.schema import CANDIDATE
+    from end_engine.quality.assessment import AssessmentAuthorityPolicy
+    prompt = ('Produce an initial answer to the task. State assumptions and material limitations.'
+              ' ORIGINAL_TASK requirements override MODEL_REVISION_PLAN suggestions. '
+              'Task assertions, candidates and proposals are not independent evidence. '
+              'Preserve valid citations; never invent sources or executed checks.')
+    return ModelRequest('initial_candidate', prompt,
+        {'task': task, 'iteration': 0, 'candidate': None, 'revision_plan': None,
+         'assessment_context': AssessmentAuthorityPolicy(task).context(),
+         'plan_origin': 'MODEL_REVISION_PLAN'}, CANDIDATE)
 
 
 class EngineAdapter:
@@ -189,16 +212,23 @@ class HarnessToolVerifier:
         return tuple((c.claim_id, c.text) for c in claims if c.text in self.binding.scopes)
 
     def evidence(self, receipt, artifact, ref, mappings):
-        from end_engine.quality.state import EvidenceArtifact
+        from end_engine.quality.state import CheckContract, EvidenceArtifact
         self.executor.validate_receipt(receipt, artifact, ref, mappings)
         description = self.binding.description
         if self.binding.include_observations:
             description += '\n' + canonical({'development_feedback': {'status': receipt.status,
                 'verdict': receipt.verdict, 'observations': strict_loads(receipt.observations_json)}}).decode()
+        check = self.executor.registry.get(receipt.check_id)
+        # validate_receipt already proves issuance, configuration, scopes and both artifact hashes.
+        # Bind the original inspected UTF-8 span, not its whitespace-normalized JSON hash.
+        contract = (CheckContract(check_id=check.check_id, phase=receipt.evidence_phase,
+            claims=receipt.supported_scopes, artifact_sha256=artifact.candidate_hash,
+            version=check.version)  # No separate semantic bounds declaration in the registry.
+            if receipt.evidence_phase is not None else None)
         return EvidenceArtifact(receipt.execution_id, ref.local_id, "EXECUTED_EVIDENCE",
             f"harness:{receipt.run_id}:receipts/{receipt.execution_id}.json", receipt.verdict == "PASS",
             description,
-            receipt.targets)
+            receipt.targets, contract=contract)
 
     def collect(self, task, candidate, tests, claims):
         trajectory = self.engine_ref()

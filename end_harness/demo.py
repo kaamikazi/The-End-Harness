@@ -54,12 +54,27 @@ class SyntheticJudgeModel:
         context, purpose = request.context, request.purpose
         if purpose in ("judgment", "adversarial_judgment"):
             response = judgment_fixture(context["dimensions"])
+            # C2's fatal regression is grounded in the actual failed, candidate-bound
+            # development check supplied to this judge. Comparison scores remain advisory.
+            if strict_loads(context['candidate']['content']) == strict_loads(candidate_text('regressed')):
+                failures = [e for e in context['evidence'] if e['evidence_type'] == 'EXECUTED_EVIDENCE'
+                            and not e['passed'] and e.get('contract')]
+                if failures:
+                    evidence = failures[0]
+                    scope = evidence['contract']['claims'][0]
+                    response = judgment_fixture(context['dimensions'], verdict='FAIL', fatal=True,
+                        issues=[{'category': 'safety', 'description': 'The bounded safety check failed',
+                            'target': evidence['targets'][0], 'fatal': True,
+                            'evidence': [evidence['artifact_id']], 'claim_type': 'CANDIDATE_INTERNAL',
+                            'candidate_quote': context['candidate']['content'],
+                            'source_claim': scope, 'alleged_defect': 'Not ' + scope,
+                            'basis': 'Executed candidate-bound checker receipt'}])
         elif purpose == "adversarial_tests":
             response = {"tests": [{"target": context["claims"][0]["claim_id"] if context["claims"] else "candidate",
                 "scenario": "registered:deployment.safety", "expected_property": POLICY_CLAIM,
                 "execution_status": "UNEXECUTED"}]}
         elif purpose == "comparison":
-            # Synthetic fixture preference supplies the regression trigger to END's own comparator.
+            # Comparison preference is advisory; executed-check-grounded findings drive rejection.
             improving = strict_loads(context["candidates"]["B"])["require_healthy_before_stop"]
             preferred, delta = ("B", .3) if improving else ("A", -.4)
             response = {"preferred": preferred, "dimensions": {d: preferred for d in context["dimensions"]},

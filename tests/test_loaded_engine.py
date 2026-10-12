@@ -25,6 +25,25 @@ class LoadedEngineTests(unittest.TestCase):
                                 env=env, cwd=self.root, capture_output=True, timeout=30)
         self.assertEqual(result.returncode, 0, result.stderr.decode())
 
+    def test_version_identity_rejects_malformed_or_unsupported_values(self):
+        self.run_script("""
+import json
+from end_harness.adapters import _source_identity
+p = source / 'pyproject.toml'
+for version in ('0.3.5', '0.3.5.2'):
+    p.write_text('[project]\\nversion = '+json.dumps(version)+'\\n')
+    assert _source_identity(source)['version'] == version
+for version in ('0.3.5.2\\n', '0.3.5.2 trailing', '0.3', '0.3.5.2.1', 'v0.3.5.2',
+                '٠.٣.٥.٢', '', 352):
+    p.write_text('[project]\\nversion = '+json.dumps(version)+'\\n')
+    try:
+        _source_identity(source)
+    except ValueError as e:
+        assert 'Engine version' in str(e)
+    else:
+        raise AssertionError('invalid Engine version was accepted')
+""")
+
     def test_controlled_identity_reused_and_defensive_copy_returned(self):
         self.run_script('''
 from end_harness.adapters import load_engine

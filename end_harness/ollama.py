@@ -189,4 +189,4 @@ class OllamaProvider:
         @dataclass(frozen=True)
         class ObservedResponse(ModelResponse):
             observation: dict | None = None
-        return ObservedResponse(content, usage, (), observation)
+        return ObservedResponse(content=content, usage=usage, tool_calls=(), observation=observation)

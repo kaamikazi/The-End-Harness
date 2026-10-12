@@ -926,7 +926,7 @@ class AntigravityProvider:
         @dataclass(frozen=True)
         class ObservedResponse(ModelResponse):
             observation: dict | None = None
-        return ObservedResponse(content, usage, (), observation)
+        return ObservedResponse(content=content, usage=usage, tool_calls=(), observation=observation)
 
     def _envelope(self, raw, observation):
         info = {'parse_status': 'not_attempted', 'fields': None}
