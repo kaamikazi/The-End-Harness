@@ -86,6 +86,8 @@ The review confirmed keyword response construction preserves observations, every
 
 Eight actual journals from both historical smokes were inspected read-only with complete closure, no unfinished calls and no torn tails. Existing synthetic historical-format tests also pass. Engine source/evidence and all pre-existing Harness evidence hashes remain unchanged. No blocking Engine defect was established. Final supported suite: **157 tests in 60.270s, 0 failures, 0 errors, 0 skips**, with the same explicit source and bytecode-disabled command above.
 
+Final pre-merge preservation check: the Engine directory acquired an additional independent-review package and archive while this task was running. No pre-existing Engine file changed or disappeared, and the source fingerprint remained identical. The full directory file set therefore changed through additions; preservation here means the 3,044 snapshotted Engine files and all 326 pre-existing Harness evidence files remain byte-identical. Those added files were neither edited nor uploaded by this Harness task. The local `engine-tree-drift.json` records the distinction.
+
 New local-only review evidence is under `output/pr1-final-review-20261012/`: original-head/full final logs, regressions before/after correction, source/evidence hash snapshots, original PR diff, and historical inspection results. Raw logs/evidence remain excluded; older validation files are unchanged.
 
 ## Scope and remaining limitations
